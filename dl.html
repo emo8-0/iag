@@ -1,162 +1,99 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Website Viewer</title>
-
-<style>
-body {
-    margin: 0;
-    padding: 15px;
-    font-family: Tahoma, Arial;
-    background: #eef1f6;
-    color: #222;
-}
-.card {
-    background: white;
-    padding: 18px;
-    margin-bottom: 15px;
-    border-radius: 10px;
-}
-button {
-    padding: 12px;
-    margin: 5px;
-    border: 0;
-    border-radius: 7px;
-    background: #2878e8;
-    color: white;
-    font-size: 15px;
-}
-iframe {
-    width: 100%;
-    height: 450px;
-    border: 0;
-}
-</style>
-</head>
-
-<body>
-
 <div class="card">
-    <h3>الموقع المحدد</h3>
-    <a id="siteLink" target="_blank">فتح الموقع</a>
-    <iframe id="siteFrame"></iframe>
-</div>
+    <h3>تسجيل صوتي</h3>
+    <p>يتطلب التسجيل موافقتك على استخدام الميكروفون.</p>
 
-<div class="card" id="deviceBox" style="display:none">
-    <h3>معلومات الجهاز</h3>
-    <div id="deviceInfo"></div>
-</div>
+    <button id="startRecording">بدء التسجيل</button>
+    <button id="sendRecording" disabled>إرسال التسجيل</button>
 
-<div class="card" id="locationBox" style="display:none">
-    <h3>تحديد الموقع</h3>
-    <button onclick="getLocation()">السماح بمشاركة موقعي</button>
-    <div id="locationResult"></div>
-</div>
-
-<div class="card" id="audioBox" style="display:none">
-    <h3>تسجيل الصوت</h3>
-    <p>يبدأ التسجيل بعد موافقتك والضغط على الزر.</p>
-    <button onclick="startAudio()">بدء التسجيل</button>
-    <button onclick="stopAudio()">إيقاف التسجيل</button>
-    <audio id="player" controls></audio>
+    <p id="status">بانتظار الموافقة</p>
+    <audio id="audioPlayer" controls></audio>
 </div>
 
 <script>
-"use strict";
+var recorder;
+var audioStream;
+var audioChunks = [];
 
-var params = new URLSearchParams(location.search);
-var site = params.get("site");
-var options = (params.get("options") || "").split(",");
-
-if (site) {
-    document.getElementById("siteLink").href = site;
-    document.getElementById("siteFrame").src = site;
-}
-
-if (options.indexOf("device") !== -1) {
-    document.getElementById("deviceBox").style.display = "block";
-
-    document.getElementById("deviceInfo").textContent =
-        "النظام: " + navigator.platform +
-        " | المتصفح: " + navigator.userAgent;
-}
-
-if (options.indexOf("location") !== -1) {
-    document.getElementById("locationBox").style.display = "block";
-}
-
-if (options.indexOf("audio") !== -1) {
-    document.getElementById("audioBox").style.display = "block";
-}
-
-function getLocation() {
-    if (!navigator.geolocation) {
-        alert("المتصفح لا يدعم تحديد الموقع");
-        return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-        function(position) {
-            var lat = position.coords.latitude;
-            var lon = position.coords.longitude;
-
-            document.getElementById("locationResult").innerHTML =
-                "خط العرض: " + lat +
-                "<br>خط الطول: " + lon +
-                "<br><a target='_blank' href='https://maps.google.com/?q=" +
-                lat + "," + lon + "'>عرض الخريطة</a>";
-        },
-        function() {
-            alert("لم تتم الموافقة على الموقع");
-        }
-    );
-}
-
-var audioStream = null;
-var recorder = null;
-var chunks = [];
-
-async function startAudio() {
+document.getElementById("startRecording").onclick =
+async function() {
     try {
-        audioStream = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
+        audioStream =
+            await navigator.mediaDevices.getUserMedia({
+                audio: true
+            });
 
-        chunks = [];
+        audioChunks = [];
+
         recorder = new MediaRecorder(audioStream);
 
-        recorder.ondataavailable = function(e) {
-            if (e.data.size > 0) chunks.push(e.data);
+        recorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
         };
 
         recorder.onstop = function() {
-            var blob = new Blob(chunks, {
-                type: "audio/webm"
+            var blob = new Blob(audioChunks, {
+                type: recorder.mimeType
             });
 
-            document.getElementById("player").src =
+            document.getElementById("audioPlayer").src =
                 URL.createObjectURL(blob);
+
+            document.getElementById("sendRecording").disabled = false;
 
             audioStream.getTracks().forEach(function(track) {
                 track.stop();
             });
+
+            document.getElementById("status").textContent =
+                "انتهى التسجيل. استمع إليه قبل الإرسال.";
         };
 
         recorder.start();
-    } catch (e) {
-        alert("تعذر الحصول على إذن المايكروفون");
-    }
-}
 
-function stopAudio() {
-    if (recorder && recorder.state === "recording") {
-        recorder.stop();
+        document.getElementById("status").textContent =
+            "جاري التسجيل لمدة 5 ثوانٍ...";
+
+        setTimeout(function() {
+            if (recorder.state === "recording") {
+                recorder.stop();
+            }
+        }, 5000);
+
+    } catch(error) {
+        document.getElementById("status").textContent =
+            "لم تتم الموافقة على الميكروفون.";
     }
-}
+};
+
+document.getElementById("sendRecording").onclick =
+async function() {
+    if (audioChunks.length === 0) return;
+
+    document.getElementById("status").textContent =
+        "اختر مشاركة التسجيل من خلال وسيلة المشاركة المتاحة بجهازك.";
+
+    var blob = new Blob(audioChunks, {
+        type: recorder.mimeType
+    });
+
+    var file = new File([blob], "recording.webm", {
+        type: blob.type
+    });
+
+    if (navigator.share && navigator.canShare &&
+        navigator.canShare({files: [file]})) {
+
+        await navigator.share({
+            files: [file],
+            title: "التسجيل الصوتي"
+        });
+    } else {
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "recording.webm";
+        link.click();
+    }
+};
 </script>
-
-</body>
-</html>
