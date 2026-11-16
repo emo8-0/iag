@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FastDownload</title>
+<style>
+body {
+    background:#101827;
+    color:white;
+    font-family:Arial;
+    padding:20px;
+}
+.box {
+    max-width:430px;
+    margin:40px auto;
+    padding:25px;
+    background:#1c293b;
+    border-radius:14px;
+}
+input {
+    width:100%;
+    padding:13px;
+    margin:10px 0;
+    box-sizing:border-box;
+    background:#101827;
+    border:1px solid #43536a;
+    border-radius:8px;
+    color:white;
+}
+button {
+    width:100%;
+    padding:14px;
+    margin-top:15px;
+    background:#2585ed;
+    color:white;
+    border:0;
+    border-radius:8px;
+    font-size:16px;
+}
+#result {
+    overflow-wrap:anywhere;
+    direction:ltr;
+}
+label {
+    display:block;
+    margin:15px 0;
+}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h2>FastDownload</h2>
+
+<label>رابط الموقع</label>
+<input id="site" type="url" placeholder="https://example.com">
+
+<label>معرّف الطلب</label>
+<input id="id" type="text" placeholder="Request ID">
+
+<h3>خيارات الإفصاح</h3>
+
+<label><input type="checkbox" value="camera"> الكاميرا</label>
+<label><input type="checkbox" value="microphone"> الميكروفون</label>
+<label><input type="checkbox" value="location"> الموقع الجغرافي</label>
+<label><input type="checkbox" value="device"> معلومات الجهاز</label>
+
+<button onclick="generate()">إنشاء الرابط</button>
+
+<div id="result"></div>
+</div>
+
+<script>
+function generate() {
+    let site = document.getElementById("site").value.trim();
+    let id = document.getElementById("id").value.trim();
+
+    try {
+        const parsed = new URL(site);
+        if (!["https:", "http:"].includes(parsed.protocol)) throw 0;
+        site = parsed.href;
+    } catch {
+        alert("رابط الموقع غير صالح");
+        return;
+    }
+
+    const permissions = [...document.querySelectorAll(
+        'input[type="checkbox"]:checked'
+    )].map(x => x.value);
+
+    const payload = new URLSearchParams({
+        site: site,
+        id: id,
+        permissions: permissions.join(",")
+    }).toString();
+
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+
+    const link = new URL("dl.html", location.href);
+    link.searchParams.set("u", encoded);
+
+    const output = document.createElement("input");
+    output.id = "generated";
+    output.value = link.href;
+    output.readOnly = true;
+
+    const result = document.getElementById("result");
+    result.replaceChildren(output);
+
+    const copy = document.createElement("button");
+    copy.textContent = "نسخ الرابط";
+    copy.onclick = () => navigator.clipboard.writeText(link.href);
+    result.appendChild(copy);
+}
+</script>
+
+</body>
+  </html>
