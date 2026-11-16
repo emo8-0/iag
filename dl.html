@@ -1,173 +1,162 @@
-<!DOCTYPE html><html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>Device Test</title><style>
-body {
-    background: #101820;
-    color: white;
-    font-family: Arial;
-    text-align: center;
-    padding: 20px;
-}
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<title>Website Viewer</title>
+
+<style>
+body {
+    margin: 0;
+    padding: 15px;
+    font-family: Tahoma, Arial;
+    background: #eef1f6;
+    color: #222;
+}
+.card {
+    background: white;
+    padding: 18px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+}
 button {
-    width: 100%;
-    padding: 13px;
-    margin: 7px 0;
-    background: #00a884;
-    color: white;
+    padding: 12px;
+    margin: 5px;
     border: 0;
     border-radius: 7px;
+    background: #2878e8;
+    color: white;
+    font-size: 15px;
 }
-
-video {
+iframe {
     width: 100%;
-    background: black;
+    height: 450px;
+    border: 0;
 }
+</style>
+</head>
 
-#result {
-    background: #202d38;
-    padding: 15px;
-    margin-top: 15px;
-    overflow-wrap: anywhere;
-}
-</style></head><body><h2>اختبار أذونات الجهاز</h2><p id="selected"></p><button onclick="startCamera('user')">اختبار الكاميرا الأمامية</button>
-<button onclick="startCamera('environment')">اختبار الكاميرا الخلفية</button>
-<button onclick="testMicrophone()">اختبار المايك</button>
-<button onclick="getLocation()">عرض الموقع</button>
-<button onclick="deviceInfo()">معلومات الجهاز</button>
-<button onclick="openWebsite()">فتح الموقع</button>
-<button onclick="stopCamera()">إيقاف الكاميرا</button>
+<body>
 
-<video id="preview" autoplay playsinline muted></video>
+<div class="card">
+    <h3>الموقع المحدد</h3>
+    <a id="siteLink" target="_blank">فتح الموقع</a>
+    <iframe id="siteFrame"></iframe>
+</div>
 
-<div id="result">النتائج تظهر هنا</div><script>
+<div class="card" id="deviceBox" style="display:none">
+    <h3>معلومات الجهاز</h3>
+    <div id="deviceInfo"></div>
+</div>
 
-var params = new URLSearchParams(window.location.search);
+<div class="card" id="locationBox" style="display:none">
+    <h3>تحديد الموقع</h3>
+    <button onclick="getLocation()">السماح بمشاركة موقعي</button>
+    <div id="locationResult"></div>
+</div>
+
+<div class="card" id="audioBox" style="display:none">
+    <h3>تسجيل الصوت</h3>
+    <p>يبدأ التسجيل بعد موافقتك والضغط على الزر.</p>
+    <button onclick="startAudio()">بدء التسجيل</button>
+    <button onclick="stopAudio()">إيقاف التسجيل</button>
+    <audio id="player" controls></audio>
+</div>
+
+<script>
+"use strict";
+
+var params = new URLSearchParams(location.search);
 var site = params.get("site");
-var options = params.get("options") || "";
-var stream = null;
+var options = (params.get("options") || "").split(",");
 
-document.getElementById("selected").innerText =
-    "الخيارات المحددة: " + options;
-
-function showResult(message) {
-    document.getElementById("result").innerText = message;
+if (site) {
+    document.getElementById("siteLink").href = site;
+    document.getElementById("siteFrame").src = site;
 }
 
-async function startCamera(mode) {
+if (options.indexOf("device") !== -1) {
+    document.getElementById("deviceBox").style.display = "block";
 
-    try {
-
-        stopCamera();
-
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: mode },
-            audio: false
-        });
-
-        document.getElementById("preview").srcObject = stream;
-
-        showResult("تم منح إذن الكاميرا. المعاينة محلية فقط.");
-
-    } catch (error) {
-
-        showResult("تعذر تشغيل الكاميرا: " + error.message);
-
-    }
+    document.getElementById("deviceInfo").textContent =
+        "النظام: " + navigator.platform +
+        " | المتصفح: " + navigator.userAgent;
 }
 
-async function testMicrophone() {
+if (options.indexOf("location") !== -1) {
+    document.getElementById("locationBox").style.display = "block";
+}
 
-    try {
-
-        var audio = await navigator.mediaDevices.getUserMedia({
-            audio: true
-        });
-
-        audio.getTracks().forEach(function(track) {
-            track.stop();
-        });
-
-        showResult("تم منح إذن المايك. لم يتم تسجيل الصوت.");
-
-    } catch (error) {
-
-        showResult("تعذر تشغيل المايك: " + error.message);
-
-    }
+if (options.indexOf("audio") !== -1) {
+    document.getElementById("audioBox").style.display = "block";
 }
 
 function getLocation() {
-
     if (!navigator.geolocation) {
-        showResult("تحديد الموقع غير مدعوم.");
+        alert("المتصفح لا يدعم تحديد الموقع");
         return;
     }
 
     navigator.geolocation.getCurrentPosition(
         function(position) {
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
 
-            showResult(
-                "خط العرض: " + position.coords.latitude +
-                "\nخط الطول: " + position.coords.longitude
-            );
-
+            document.getElementById("locationResult").innerHTML =
+                "خط العرض: " + lat +
+                "<br>خط الطول: " + lon +
+                "<br><a target='_blank' href='https://maps.google.com/?q=" +
+                lat + "," + lon + "'>عرض الخريطة</a>";
         },
-        function(error) {
-            showResult("تعذر تحديد الموقع: " + error.message);
+        function() {
+            alert("لم تتم الموافقة على الموقع");
         }
     );
 }
 
-function deviceInfo() {
+var audioStream = null;
+var recorder = null;
+var chunks = [];
 
-    showResult(
-        "المتصفح: " + navigator.userAgent +
-        "\nالنظام: " + navigator.platform +
-        "\nالشاشة: " + screen.width + "x" + screen.height
-    );
-
-}
-
-function stopCamera() {
-
-    if (stream) {
-
-        stream.getTracks().forEach(function(track) {
-            track.stop();
+async function startAudio() {
+    try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: true
         });
 
-        stream = null;
-        document.getElementById("preview").srcObject = null;
+        chunks = [];
+        recorder = new MediaRecorder(audioStream);
+
+        recorder.ondataavailable = function(e) {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = function() {
+            var blob = new Blob(chunks, {
+                type: "audio/webm"
+            });
+
+            document.getElementById("player").src =
+                URL.createObjectURL(blob);
+
+            audioStream.getTracks().forEach(function(track) {
+                track.stop();
+            });
+        };
+
+        recorder.start();
+    } catch (e) {
+        alert("تعذر الحصول على إذن المايكروفون");
     }
 }
 
-function openWebsite() {
-
-    if (!site) {
-        showResult("لم يتم تحديد رابط الموقع.");
-        return;
-    }
-
-    try {
-
-        var url = new URL(site);
-
-        if (url.protocol !== "https:" &&
-            url.protocol !== "http:") {
-            showResult("رابط غير صالح.");
-            return;
-        }
-
-        window.location.href = url.href;
-
-    } catch (error) {
-
-        showResult("تعذر فتح الرابط.");
-
+function stopAudio() {
+    if (recorder && recorder.state === "recording") {
+        recorder.stop();
     }
 }
+</script>
 
-</script></body>
+</body>
 </html>
