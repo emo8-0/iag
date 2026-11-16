@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>صفحة الموافقة</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #101827;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    max-width: 450px;
+    margin: 50px auto;
+    padding: 25px;
+    background: #1c293b;
+    border-radius: 15px;
+}
+
+h2 {
+    text-align: center;
+}
+
+.description {
+    color: #b8c5d8;
+    line-height: 1.8;
+    font-size: 14px;
+}
+
+.permission {
+    padding: 13px;
+    margin: 12px 0;
+    background: #263750;
+    border-radius: 8px;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 15px;
+    border: none;
+    border-radius: 8px;
+    background: #2585ed;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.reject {
+    background: #43536a;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>الموافقة على البيانات</h2>
+
+<p class="description">
+قبل الانتقال إلى الموقع، يرجى مراجعة الخيارات التي حددها منشئ الرابط.
+هذه الصفحة لا تجمع بياناتك ولا تسجل صوتك أو تصورك.
+</p>
+
+<div id="permissions"></div>
+
+<button onclick="continueToWebsite()">
+موافقة والمتابعة إلى الموقع
+</button>
+
+<button class="reject" onclick="rejectRequest()">
+رفض
+</button>
+
+</div>
+
+<script>
+
+const params = new URLSearchParams(window.location.search);
+
+const site = params.get("site");
+
+const selected = (params.get("permissions") || "")
+    .split(",")
+    .filter(Boolean);
+
+const names = {
+    camera: "استخدام الكاميرا",
+    microphone: "استخدام الميكروفون",
+    location: "الوصول إلى الموقع الجغرافي",
+    device: "معلومات الجهاز"
+};
+
+const permissionsBox = document.getElementById("permissions");
+
+selected.forEach(permission => {
+
+    if (!names[permission]) return;
+
+    const element = document.createElement("div");
+
+    element.className = "permission";
+    element.textContent = names[permission];
+
+    permissionsBox.appendChild(element);
+
+});
+
+function validateWebsite() {
+
+    try {
+
+        const url = new URL(site);
+
+        if (!["http:", "https:"].includes(url.protocol)) {
+            return null;
+        }
+
+        return url.href;
+
+    } catch {
+
+        return null;
+
+    }
+
+}
+
+function continueToWebsite() {
+
+    const destination = validateWebsite();
+
+    if (!destination) {
+
+        alert("رابط الموقع غير صالح");
+        return;
+
+    }
+
+    window.location.assign(destination);
+
+}
+
+function rejectRequest() {
+
+    document.body.innerHTML = `
+        <div class="container">
+            <h2>تم رفض الموافقة</h2>
+            <p class="description">
+                لم يتم جمع أي بيانات.
+            </p>
+        </div>
+    `;
+
+}
+
+</script>
+
+</body>
+  </html>
