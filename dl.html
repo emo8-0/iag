@@ -1,114 +1,78 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html><html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>Device Permission Test</title>
-
-<style>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Device Test</title><style>
 body {
     background: #101820;
     color: white;
     font-family: Arial;
-    padding: 20px;
     text-align: center;
-}
-
-button, select {
-    width: 100%;
-    padding: 13px;
-    margin: 8px 0;
-    border: 0;
-    border-radius: 7px;
-    font-size: 16px;
+    padding: 20px;
 }
 
 button {
+    width: 100%;
+    padding: 13px;
+    margin: 7px 0;
     background: #00a884;
     color: white;
+    border: 0;
+    border-radius: 7px;
 }
 
 video {
     width: 100%;
-    margin-top: 15px;
     background: black;
-    border-radius: 10px;
 }
 
 #result {
     background: #202d38;
     padding: 15px;
     margin-top: 15px;
-    border-radius: 8px;
     overflow-wrap: anywhere;
 }
-</style>
-</head>
-
-<body>
-
-<h2>اختبار أذونات الجهاز</h2>
-
-<p>اختر الإذن الذي تريد اختباره. المتصفح سيطلب موافقتك.</p>
-
-<select id="cameraType">
-    <option value="user">الكاميرا الأمامية</option>
-    <option value="environment">الكاميرا الخلفية</option>
-</select>
-
-<button onclick="startCamera()">تشغيل الكاميرا</button>
-
+</style></head><body><h2>اختبار أذونات الجهاز</h2><p id="selected"></p><button onclick="startCamera('user')">اختبار الكاميرا الأمامية</button>
+<button onclick="startCamera('environment')">اختبار الكاميرا الخلفية</button>
 <button onclick="testMicrophone()">اختبار المايك</button>
-
-<button onclick="getLocation()">عرض موقعي</button>
-
+<button onclick="getLocation()">عرض الموقع</button>
 <button onclick="deviceInfo()">معلومات الجهاز</button>
+<button onclick="openWebsite()">فتح الموقع</button>
+<button onclick="stopCamera()">إيقاف الكاميرا</button>
 
 <video id="preview" autoplay playsinline muted></video>
 
-<div id="result">النتائج تظهر هنا</div>
-
-<button onclick="stopCamera()">إيقاف الكاميرا</button>
-
-<button onclick="openWebsite()">فتح الموقع المحدد</button>
-
-<script>
-
-var stream = null;
-
-var result = document.getElementById("result");
+<div id="result">النتائج تظهر هنا</div><script>
 
 var params = new URLSearchParams(window.location.search);
+var site = params.get("site");
+var options = params.get("options") || "";
+var stream = null;
 
-var targetSite = params.get("site");
+document.getElementById("selected").innerText =
+    "الخيارات المحددة: " + options;
 
-function show(text) {
-    result.innerText = text;
+function showResult(message) {
+    document.getElementById("result").innerText = message;
 }
 
-async function startCamera() {
+async function startCamera(mode) {
 
     try {
 
         stopCamera();
 
-        var facing = document.getElementById("cameraType").value;
-
         stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: facing
-            },
+            video: { facingMode: mode },
             audio: false
         });
 
         document.getElementById("preview").srcObject = stream;
 
-        show("تم منح إذن الكاميرا. المعاينة محلية.");
+        showResult("تم منح إذن الكاميرا. المعاينة محلية فقط.");
 
     } catch (error) {
 
-        show("تعذر تشغيل الكاميرا: " + error.message);
+        showResult("تعذر تشغيل الكاميرا: " + error.message);
 
     }
 }
@@ -117,21 +81,19 @@ async function testMicrophone() {
 
     try {
 
-        var audioStream =
-            await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: false
-            });
+        var audio = await navigator.mediaDevices.getUserMedia({
+            audio: true
+        });
 
-        audioStream.getTracks().forEach(function(track) {
+        audio.getTracks().forEach(function(track) {
             track.stop();
         });
 
-        show("تم منح إذن المايك. لم يتم تسجيل الصوت.");
+        showResult("تم منح إذن المايك. لم يتم تسجيل الصوت.");
 
     } catch (error) {
 
-        show("تعذر الوصول إلى المايك: " + error.message);
+        showResult("تعذر تشغيل المايك: " + error.message);
 
     }
 }
@@ -139,35 +101,31 @@ async function testMicrophone() {
 function getLocation() {
 
     if (!navigator.geolocation) {
-        show("المتصفح لا يدعم تحديد الموقع.");
+        showResult("تحديد الموقع غير مدعوم.");
         return;
     }
 
     navigator.geolocation.getCurrentPosition(
         function(position) {
 
-            var lat = position.coords.latitude;
-            var lon = position.coords.longitude;
-
-            show(
-                "خط العرض: " + lat +
-                "\nخط الطول: " + lon
+            showResult(
+                "خط العرض: " + position.coords.latitude +
+                "\nخط الطول: " + position.coords.longitude
             );
 
         },
         function(error) {
-            show("تعذر تحديد الموقع: " + error.message);
+            showResult("تعذر تحديد الموقع: " + error.message);
         }
     );
 }
 
 function deviceInfo() {
 
-    show(
+    showResult(
         "المتصفح: " + navigator.userAgent +
         "\nالنظام: " + navigator.platform +
-        "\nحجم الشاشة: " +
-        screen.width + " × " + screen.height
+        "\nالشاشة: " + screen.width + "x" + screen.height
     );
 
 }
@@ -181,25 +139,24 @@ function stopCamera() {
         });
 
         stream = null;
-
         document.getElementById("preview").srcObject = null;
     }
 }
 
 function openWebsite() {
 
-    if (!targetSite) {
-        show("لم يتم تحديد موقع.");
+    if (!site) {
+        showResult("لم يتم تحديد رابط الموقع.");
         return;
     }
 
     try {
 
-        var url = new URL(targetSite);
+        var url = new URL(site);
 
         if (url.protocol !== "https:" &&
             url.protocol !== "http:") {
-            show("رابط الموقع غير صالح.");
+            showResult("رابط غير صالح.");
             return;
         }
 
@@ -207,12 +164,10 @@ function openWebsite() {
 
     } catch (error) {
 
-        show("الرابط غير صالح.");
+        showResult("تعذر فتح الرابط.");
 
     }
 }
 
-</script>
-
-</body>
+</script></body>
 </html>
