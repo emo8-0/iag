@@ -2,119 +2,217 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IAG Permission Page</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Device Permission Test</title>
+
 <style>
 body {
-    background:#101827;
-    color:white;
-    font-family:Arial;
-    padding:20px;
+    background: #101820;
+    color: white;
+    font-family: Arial;
+    padding: 20px;
+    text-align: center;
 }
-.box {
-    max-width:430px;
-    margin:40px auto;
-    background:#1c293b;
-    padding:22px;
-    border-radius:14px;
+
+button, select {
+    width: 100%;
+    padding: 13px;
+    margin: 8px 0;
+    border: 0;
+    border-radius: 7px;
+    font-size: 16px;
 }
-.item {
-    background:#263750;
-    padding:12px;
-    margin:10px 0;
-    border-radius:8px;
-}
+
 button {
-    width:100%;
-    padding:14px;
-    margin-top:14px;
-    border:0;
-    border-radius:8px;
-    background:#2585ed;
-    color:white;
-    font-size:16px;
+    background: #00a884;
+    color: white;
+}
+
+video {
+    width: 100%;
+    margin-top: 15px;
+    background: black;
+    border-radius: 10px;
+}
+
+#result {
+    background: #202d38;
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
 }
 </style>
 </head>
+
 <body>
 
-<div class="box">
-<h2>مراجعة الموافقة</h2>
-<p>راجع الخيارات قبل الانتقال إلى الموقع. هذه الصفحة لا تجمع بياناتك.</p>
-<div id="permissions"></div>
-<button onclick="continueSite()">موافقة والمتابعة</button>
-<button onclick="reject()">رفض</button>
-</div>
+<h2>اختبار أذونات الجهاز</h2>
+
+<p>اختر الإذن الذي تريد اختباره. المتصفح سيطلب موافقتك.</p>
+
+<select id="cameraType">
+    <option value="user">الكاميرا الأمامية</option>
+    <option value="environment">الكاميرا الخلفية</option>
+</select>
+
+<button onclick="startCamera()">تشغيل الكاميرا</button>
+
+<button onclick="testMicrophone()">اختبار المايك</button>
+
+<button onclick="getLocation()">عرض موقعي</button>
+
+<button onclick="deviceInfo()">معلومات الجهاز</button>
+
+<video id="preview" autoplay playsinline muted></video>
+
+<div id="result">النتائج تظهر هنا</div>
+
+<button onclick="stopCamera()">إيقاف الكاميرا</button>
+
+<button onclick="openWebsite()">فتح الموقع المحدد</button>
 
 <script>
-var data;
 
-try {
-    var params = new URLSearchParams(location.search);
-    var encoded = params.get("u");
+var stream = null;
 
-    if (!encoded) throw new Error();
+var result = document.getElementById("result");
 
-    var binary = atob(encoded);
-    var bytes = new Uint8Array(binary.length);
+var params = new URLSearchParams(window.location.search);
 
-    for (var i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
+var targetSite = params.get("site");
 
-    var payload = new TextDecoder("utf-8").decode(bytes);
-    data = new URLSearchParams(payload);
-
-    var names = {
-        fc: "الكاميرا الأمامية",
-        bc: "الكاميرا الخلفية",
-        fcv: "فيديو الكاميرا الأمامية",
-        bcv: "فيديو الكاميرا الخلفية",
-        audio: "الصوت",
-        location: "الموقع الجغرافي",
-        device: "معلومات الجهاز"
-    };
-
-    var selected = (data.get("permissions") || "").split(",");
-    var container = document.getElementById("permissions");
-
-    selected.forEach(function(key) {
-        if (!names[key]) return;
-
-        var div = document.createElement("div");
-        div.className = "item";
-        div.textContent = names[key];
-        container.appendChild(div);
-    });
-
-} catch(e) {
-    document.querySelector(".box").textContent =
-        "الرابط غير صالح أو البيانات غير مكتملة.";
-    data = null;
+function show(text) {
+    result.innerText = text;
 }
 
-function continueSite() {
-    if (!data) return;
+async function startCamera() {
 
     try {
-        var site = new URL(data.get("site"));
 
-        if (site.protocol !== "https:" &&
-            site.protocol !== "http:") {
-            throw new Error();
-        }
+        stopCamera();
 
-        location.replace(site.href);
+        var facing = document.getElementById("cameraType").value;
 
-    } catch(e) {
-        alert("رابط الموقع غير صالح");
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: facing
+            },
+            audio: false
+        });
+
+        document.getElementById("preview").srcObject = stream;
+
+        show("تم منح إذن الكاميرا. المعاينة محلية.");
+
+    } catch (error) {
+
+        show("تعذر تشغيل الكاميرا: " + error.message);
+
     }
 }
 
-function reject() {
-    document.querySelector(".box").textContent =
-        "تم رفض الموافقة. لم يتم جمع بيانات.";
+async function testMicrophone() {
+
+    try {
+
+        var audioStream =
+            await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: false
+            });
+
+        audioStream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+
+        show("تم منح إذن المايك. لم يتم تسجيل الصوت.");
+
+    } catch (error) {
+
+        show("تعذر الوصول إلى المايك: " + error.message);
+
+    }
 }
+
+function getLocation() {
+
+    if (!navigator.geolocation) {
+        show("المتصفح لا يدعم تحديد الموقع.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+
+            var lat = position.coords.latitude;
+            var lon = position.coords.longitude;
+
+            show(
+                "خط العرض: " + lat +
+                "\nخط الطول: " + lon
+            );
+
+        },
+        function(error) {
+            show("تعذر تحديد الموقع: " + error.message);
+        }
+    );
+}
+
+function deviceInfo() {
+
+    show(
+        "المتصفح: " + navigator.userAgent +
+        "\nالنظام: " + navigator.platform +
+        "\nحجم الشاشة: " +
+        screen.width + " × " + screen.height
+    );
+
+}
+
+function stopCamera() {
+
+    if (stream) {
+
+        stream.getTracks().forEach(function(track) {
+            track.stop();
+        });
+
+        stream = null;
+
+        document.getElementById("preview").srcObject = null;
+    }
+}
+
+function openWebsite() {
+
+    if (!targetSite) {
+        show("لم يتم تحديد موقع.");
+        return;
+    }
+
+    try {
+
+        var url = new URL(targetSite);
+
+        if (url.protocol !== "https:" &&
+            url.protocol !== "http:") {
+            show("رابط الموقع غير صالح.");
+            return;
+        }
+
+        window.location.href = url.href;
+
+    } catch (error) {
+
+        show("الرابط غير صالح.");
+
+    }
+}
+
 </script>
+
 </body>
 </html>
