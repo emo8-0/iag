@@ -2,9 +2,8 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FastDownload</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IAG Permission Page</title>
 <style>
 body {
     background:#101827;
@@ -14,126 +13,108 @@ body {
 }
 .box {
     max-width:430px;
-    margin:50px auto;
-    padding:25px;
+    margin:40px auto;
     background:#1c293b;
+    padding:22px;
     border-radius:14px;
 }
 .item {
     background:#263750;
-    padding:14px;
-    margin:12px 0;
+    padding:12px;
+    margin:10px 0;
     border-radius:8px;
-}
-p {
-    line-height:1.8;
-    color:#c4d0df;
 }
 button {
     width:100%;
     padding:14px;
-    margin-top:15px;
+    margin-top:14px;
     border:0;
     border-radius:8px;
     background:#2585ed;
     color:white;
     font-size:16px;
 }
-.reject {
-    background:#43536a;
-}
 </style>
 </head>
-
 <body>
 
 <div class="box">
-<h2>صفحة الموافقة</h2>
-
-<p>
-راجع المعلومات التالية قبل المتابعة إلى الموقع.
-هذه الصفحة لا تلتقط الصور أو الصوت ولا تجمع بيانات موقعك.
-</p>
-
-<div id="details"></div>
-
+<h2>مراجعة الموافقة</h2>
+<p>راجع الخيارات قبل الانتقال إلى الموقع. هذه الصفحة لا تجمع بياناتك.</p>
+<div id="permissions"></div>
 <button onclick="continueSite()">موافقة والمتابعة</button>
-<button class="reject" onclick="reject()">رفض</button>
+<button onclick="reject()">رفض</button>
 </div>
 
 <script>
-function decodePayload() {
-    const params = new URLSearchParams(location.search);
-    const encoded = params.get("u");
-
-    if (!encoded) throw new Error("Missing payload");
-
-    const normalized = encoded.replace(/ /g, "+");
-    const decoded = decodeURIComponent(
-        Array.from(atob(normalized))
-            .map(c => "%" + c.charCodeAt(0).toString(16).padStart(2,"0"))
-            .join("")
-    );
-
-    return new URLSearchParams(decoded);
-}
-
-let data;
+var data;
 
 try {
-    data = decodePayload();
-} catch {
-    document.querySelector(".box").innerHTML =
-        "<h2>الرابط غير صالح</h2><p>تعذر قراءة إعدادات الرابط.</p>";
-}
+    var params = new URLSearchParams(location.search);
+    var encoded = params.get("u");
 
-const names = {
-    camera: "الكاميرا",
-    microphone: "الميكروفون",
-    location: "الموقع الجغرافي",
-    device: "معلومات الجهاز"
-};
+    if (!encoded) throw new Error();
 
-if (data) {
-    const container = document.getElementById("details");
-    const selected = (data.get("permissions") || "")
-        .split(",")
-        .filter(Boolean);
+    var binary = atob(encoded);
+    var bytes = new Uint8Array(binary.length);
 
-    selected.forEach(value => {
-        if (!names[value]) return;
+    for (var i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
 
-        const item = document.createElement("div");
-        item.className = "item";
-        item.textContent = names[value];
-        container.appendChild(item);
+    var payload = new TextDecoder("utf-8").decode(bytes);
+    data = new URLSearchParams(payload);
+
+    var names = {
+        fc: "الكاميرا الأمامية",
+        bc: "الكاميرا الخلفية",
+        fcv: "فيديو الكاميرا الأمامية",
+        bcv: "فيديو الكاميرا الخلفية",
+        audio: "الصوت",
+        location: "الموقع الجغرافي",
+        device: "معلومات الجهاز"
+    };
+
+    var selected = (data.get("permissions") || "").split(",");
+    var container = document.getElementById("permissions");
+
+    selected.forEach(function(key) {
+        if (!names[key]) return;
+
+        var div = document.createElement("div");
+        div.className = "item";
+        div.textContent = names[key];
+        container.appendChild(div);
     });
+
+} catch(e) {
+    document.querySelector(".box").textContent =
+        "الرابط غير صالح أو البيانات غير مكتملة.";
+    data = null;
 }
 
 function continueSite() {
     if (!data) return;
 
-    let destination;
-
     try {
-        destination = new URL(data.get("site"));
+        var site = new URL(data.get("site"));
 
-        if (!["https:", "http:"].includes(destination.protocol)) {
+        if (site.protocol !== "https:" &&
+            site.protocol !== "http:") {
             throw new Error();
         }
-    } catch {
-        alert("رابط الموقع غير صالح");
-        return;
-    }
 
-    location.replace(destination.href);
+        location.replace(site.href);
+
+    } catch(e) {
+        alert("رابط الموقع غير صالح");
+    }
 }
 
 function reject() {
-    document.querySelector(".box").innerHTML =
-        "<h2>تم رفض الموافقة</h2><p>لم يتم جمع أي بيانات.</p>";
+    document.querySelector(".box").textContent =
+        "تم رفض الموافقة. لم يتم جمع بيانات.";
 }
 </script>
-
 </body>
 </html>
